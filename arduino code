@@ -1,0 +1,243 @@
+//配置ESP8266WIFI设置
+
+#include "ESP8266.h"  
+#include "SoftwareSerial.h"
+
+#define SSID "***********"                              //热点名称
+#define PASSWORD "********"                             //热点密码
+#define HOST_NAME "api.heclouds.com"           
+#define DEVICE_ID "**********"                          //设备ID
+#define HOST_PORT (80)              
+String APIKey = "**********************";               //APIKey
+
+#define INTERVAL_SENSOR 5000 
+
+SoftwareSerial mySerial(3, 2);
+ESP8266 wifi(mySerial);
+
+//以上为ESP8266常规设置
+
+#define BUTTON 12                     //定义按钮在 12号引脚
+int val = 0；                         //
+int old_val = 0;                      //按钮组
+
+int state = 0;                        //每次按下按钮，state++，用于切换三种模式
+
+const int TrigPin = 7;                //
+const int EchoPin = 8;                //此实验所用：超声波测距仪SR04模块
+int led = 10;
+
+float kakonoHeight = 0;               //初始距离
+float imanoHeight ;                   //当前距离
+float x = 10;                         //警戒值
+float percent;
+
+void setup(){
+
+pinMode(BUTTON, INPUT);
+pinMode(TrigPin, OUTPUT);
+pinMode(EchoPin, INPUT);
+pinMode(led, OUTPUT);                 //各种元器件设置
+
+//接下来是刻在DNA里ESP8266的设置操作
+
+mySerial.begin(115200); 
+Serial.begin(9600);                                   //用于串口输出
+Serial.print("setup begin\r\n");
+  Serial.print("FW Version: ");
+  Serial.println(wifi.getVersion().c_str());
+
+  if (wifi.setOprToStation()) {
+    Serial.print("to station ok\r\n");
+  } else {
+    Serial.print("to station err\r\n");
+  }
+  if (wifi.joinAP(SSID, PASSWORD)) {
+    Serial.print("Join AP success\r\n");
+    Serial.print("IP: ");
+    Serial.println(wifi.getLocalIP().c_str());
+  } else {
+    Serial.print("Join AP failure\r\n");
+  }
+  mySerial.println("AT+UART_CUR=9600,8,1,0,0");
+  mySerial.begin(9600);
+  Serial.println("setup end\r\n");
+}
+
+
+void loop(){                                           //主要是调用函数，全部放在loop函数里可能执行会失误
+
+//因为并联电容消抖，所以按钮的代码简洁得多
+
+val = digitalRead(BUTTON);                             //读取按钮状态并且存储
+if((val==HIGH)&&(old_val==LOW))                        //检查按钮的变化情况
+{
+printState();                                          //中继作用的函数
+}
+old_val=val;                                                                           
+
+}
+
+
+
+void printState()
+{
+state++;                                     //转换三种工作模式，下文会提到
+Serial.print("state=");
+Serial.println(state);                       //便于检查工作模式
+kidou();
+}
+
+
+
+void kidou()                             //关键函数
+{
+
+if(state%3==0)                           //state 0，关机状态
+{
+  Serial.print("关机\n");
+  state=0;
+digitalWrite(led,LOW);
+}
+
+if(state==1)                       //state 1，获得kakonoHeight（初始距离），发送至ONENET
+{
+
+digitalWrite(TrigPin, LOW);
+delayMicroseconds(8);
+digitalWrite(TrigPin, HIGH);
+delayMicroseconds(10);
+digitalWrite(TrigPin, LOW);          //超声波测距模块工作程序
+
+
+kakonoHeight = pulseIn(EchoPin, HIGH) / 58.0;              //换算至厘米
+Serial.print("初始距离=");
+Serial.println(kakonoHeight);
+
+//以下均为发送至ONENET常规代码
+
+  unsigned long net_time1 = millis();
+  if (net_time1 > millis())
+    net_time1 = millis();
+  if (wifi.createTCP(HOST_NAME, HOST_PORT)) { 
+      Serial.print("create tcp ok\r\n");
+char buf[5];
+dtostrf(kakonoHeight, 1, 2, buf);                                //字符串拼接，上传的一定是字符串
+      
+      String jsonToSend = "{\"distance\":";                      //ONENET目标数据名称distance
+
+      jsonToSend += "\"" +String(buf) + "\"";
+      jsonToSend += "}";
+
+      String postString = "POST /devices/";
+      postString += DEVICE_ID;
+      postString += "/datapoints?type=3 HTTP/1.1";
+      postString += "\r\n";
+      postString += "api-key:";
+      postString += APIKey;
+      postString += "\r\n";
+      postString += "Host:api.heclouds.com\r\n";
+      postString += "Connection:close\r\n";
+      postString += "Content-Length:";
+      postString += jsonToSend.length();
+      postString += "\r\n";
+      postString += "\r\n";
+      postString += jsonToSend;
+      postString += "\r\n";
+      postString += "\r\n";
+      postString += "\r\n";
+
+      const char *postArray = postString.c_str(); 
+
+      wifi.send((const uint8_t *)postArray, strlen(postArray)); 
+      Serial.println("send success");
+      if (wifi.releaseTCP()) { 
+        Serial.print("release tcp ok\r\n");
+      } else {
+        Serial.print("release tcp err\r\n");
+      }
+      postArray = NULL; 
+    } else {
+      Serial.print("create tcp err\r\n");
+    }
+
+    Serial.println("");
+
+    net_time1 = millis();
+}
+
+
+
+if(state==2)                         //获得imanoHeight（当前距离），上传并操控报警器
+{
+
+do{digitalWrite(TrigPin, LOW);
+delayMicroseconds(8);
+digitalWrite(TrigPin, HIGH);
+delayMicroseconds(10);
+digitalWrite(TrigPin, LOW);                          //超声波测距模块工作
+
+imanoHeight = pulseIn(EchoPin, HIGH) / 58.0;        //同样换算成厘米
+Serial.print("当前距离=");
+Serial.println(imanoHeight);
+
+//以下同样为ESP8266通常操作
+
+  unsigned long net_time1 = millis();
+  if (net_time1 > millis())
+    net_time1 = millis();
+  if (wifi.createTCP(HOST_NAME, HOST_PORT)) { 
+      Serial.print("create tcp ok\r\n");
+char arr[5];
+dtostrf(imanoHeight, 1, 2, arr);                               //一定上传字符串
+      
+      String ajsonToSend = "{\"leangle\":";                    //ONENET目标数据名称leangle
+
+      ajsonToSend += "\"" +String(arr) + "\"";
+      ajsonToSend += "}";
+
+      String apostString = "POST /devices/";
+      apostString += DEVICE_ID;
+      apostString += "/datapoints?type=3 HTTP/1.1";
+      apostString += "\r\n";
+      apostString += "api-key:";
+      apostString += APIKey;
+      apostString += "\r\n";
+      apostString += "Host:api.heclouds.com\r\n";
+      apostString += "Connection:close\r\n";
+      apostString += "Content-Length:";
+      apostString += ajsonToSend.length();
+      apostString += "\r\n";
+      apostString += "\r\n";
+      apostString += ajsonToSend;
+      apostString += "\r\n";
+      apostString += "\r\n";
+      apostString += "\r\n";
+
+      const char *apostArray = apostString.c_str(); 
+
+      wifi.send((const uint8_t *)apostArray, strlen(apostArray)); 
+      Serial.println("send success");
+      if (wifi.releaseTCP()) { 
+        Serial.print("release tcp ok\r\n");
+      } else {
+        Serial.print("release tcp err\r\n");
+      }
+      apostArray = NULL; 
+    } else {
+      Serial.print("create tcp err\r\n");
+    }
+
+    Serial.println("");
+
+    net_time1 = millis();}while(imanoHeight>x);                 //do-while函数，使得以上程序至少执行一次，
+                                                                //当水位未达到警戒值时，重复执行
+
+if(imanoHeight<x)
+{
+digitalWrite(led,HIGH);                              //当水位达到警戒值时，硬件端会报警，led或蜂鸣器会工作
+Serial.print("blast\n");                                //串口显示一个不明意义的单词
+}
+}
+
+}

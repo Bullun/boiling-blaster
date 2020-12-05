@@ -29,7 +29,7 @@ int led = 10;
 
 float kakonoHeight = 0;               //初始距离
 float imanoHeight ;                   //当前距离
-float x = 10;                         //警戒值
+float x = 5;                         //警戒值
 float percent;
 
 void setup(){

@@ -1,0 +1,38 @@
+wxml代码：
+
+<image class="tuning" src="http://www.oursparkspace.cn/wp-content/uploads/2020/12/无标题.png"></image>
+
+<button bindtap="kokan" class="fume">听话地拿卡</button>
+
+
+
+wxss代码：
+
+.fume{          //意思为不明
+  margin-top:800rpx;
+  background-color:#c7e485;
+}
+.tuning{
+  position:absolute;
+  left:12%;
+  margin-left:-1/2width;
+}
+
+
+
+js代码：
+
+const app = getApp()
+Page({
+
+  data: {
+
+  },
+  kokan:function(options){           //意思为交换
+    wx.navigateTo({
+      url:'../../page/complete/complete'
+    })
+  },
+
+
+})

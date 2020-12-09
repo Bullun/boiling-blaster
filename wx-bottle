@@ -1,0 +1,110 @@
+wxml代码：
+
+<button bindtap="back" type="primary">点击返回</button>
+
+<view class="mode">
+  <text>水瓶深度为</text>
+  <text class="color">{{kakonoHeight}}</text>            //显示js里定义的kakonoHeight(过去的高度）
+  <text>cm</text>
+</view>
+
+<view class="mode">
+  <text>离接满还有</text>
+  <text class="color">{{imanoHeight}}</text>             //显示js里定义的imanoHeight(现在的高度）
+  <text>cm</text>
+</view>
+
+<view class="mode">
+  <text>百分比</text>
+  <text class="color">{{percent}}</text>                 //显示经计算得到水瓶中水的占比
+  <text>%</text>
+</view>
+
+<view wx:if="{{percent>75}}">
+  <image class="suika" src="http://www.oursparkspace.cn/wp-content/uploads/2020/12/提示-1.jpg"></image>
+  <view class="mode">都快满啦</view>
+  <button class="maho" bindtap="jump">点我，听话地关掉</button>
+</view>
+
+
+
+
+wxss代码：             //懒得吐槽了
+
+.mode{
+  text-align:center;
+  margin-top:40rpx;
+}
+.color{
+  color:#880e0e;
+}
+.maho{
+  background-color:#c7e485;
+  margin-top:30rpx;
+}
+.suika{
+  width:100%;
+}
+
+
+
+
+js代码：
+
+const app = getApp()
+
+Page({
+  data: {
+    kakonoHeight:0,
+    imanoHeight:0,
+    percent:0
+  },
+  
+  back:function(){                  //点击返回上一个页面
+    wx.navigateBack()
+  },
+  
+  jump:function(options){           //点击跳转到card页面
+    wx.navigateTo({
+      url:'../../page/card/card'
+    })
+  },
+  
+  onLoad: function (options) {      //监听页面加载
+    var that = this;
+    that.getDataFromOneNet();
+    setInterval(function () {
+      that.getDataFromOneNet();
+    }, 50);                         //实现了实时更新数据的功能，每隔0.05秒刷新
+  },
+  
+  getDataFromOneNet: function () {
+    var page = this;
+    
+    const requestTask = wx.request({
+
+      url: 'https://api.heclouds.com/devices/***********/datapoints?datastream_id=distance,leangle',    //*为设备id，数据流id填ONENET申请的数据名称
+      header: {
+        'content-type': 'application/json',                  //ONENET的api调用格式
+        'api-key': '******************'
+      },
+      success: function (res) {
+        console.log(res)
+        var distance = res.data.data.datastreams[0]['datapoints'][0]['value'];            //获取ONENET数据
+        var leangle = res.data.data.datastreams[1]['datapoints'][0]['value'];
+        var minus = (1-leangle/distance)*100;
+        minus = minus.toFixed(2)           //保留两位小数
+        page.setData({ kakonoHeight: distance,imanoHeight:leangle,percent:minus})         //向data里传递数据
+      },
+      fail: function (res) {
+        console.log("fail")
+      },
+
+      complete: function (res) {            //调试用的两个
+        console.log("end")
+
+      }
+    })
+
+  },
+})

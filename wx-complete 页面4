@@ -1,0 +1,45 @@
+wxml代码：
+
+<image class="siyouko" src="http://www.oursparkspace.cn/wp-content/uploads/2020/12/水要慢些喝哦.jpg"></image>
+
+<view class="mode">水要放凉再喝哦</view>
+
+<view class="mode">谢谢本次使用</view>
+
+<view class="setudan">
+  <navigator target="miniProgram" open-type="exit" style="text-align:center" class="biouin">点我关闭噢</navigator>        //点击关闭小程序
+</view>
+
+
+
+wxss代码：
+
+.mode{
+  text-align:center;
+  margin-top:50rpx;
+}
+.siyouko{             //证据
+  width:100%;
+}
+.setudan{             //切断
+
+  width:30%;
+  margin-top:100rpx;
+}
+.biouin{              //病院
+  background-color:rgb(120, 213, 250);
+  position:absolute;
+  left:40%;
+  margin-left:-1/2width;          //图片水平居中
+}
+
+
+
+
+js代码：
+
+Page({
+  data: {
+
+  },
+})              //真的好省心的一页

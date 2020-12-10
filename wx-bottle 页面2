@@ -3,6 +3,10 @@ wxml代码：
 <button bindtap="back" type="primary">点击返回</button>
 
 <view class="mode">
+  <input bindinput="hason" type="number" maxlength="2" placeholder="期望水的占比（默认75）%"/>        //输入水的期望值（可不填）
+</view>
+
+<view class="mode">
   <text>水瓶深度为</text>
   <text class="color">{{kakonoHeight}}</text>            //显示js里定义的kakonoHeight(过去的高度）
   <text>cm</text>

@@ -61,7 +61,8 @@ Page({
   data: {
     kakonoHeight:0,
     imanoHeight:0,
-    percent:0
+    percent:0,
+    set:75,
   },
   
   back:function(){                  //点击返回上一个页面
@@ -71,6 +72,12 @@ Page({
   jump:function(options){           //点击跳转到card页面
     wx.navigateTo({
       url:'../../page/card/card'
+    })
+  },
+  
+  hason:function(e){                //设置期望值
+    this.setData({
+      set:e.detail.value
     })
   },
   
